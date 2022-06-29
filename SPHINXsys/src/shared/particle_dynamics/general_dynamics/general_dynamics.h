@@ -74,17 +74,17 @@ namespace SPH
 	 * @brief Randomize the initial particle position
 	 */
 	class RandomizeParticlePosition
-		: public OldParticleDynamicsSimple,
+		: public LocalParticleDynamics,
 		  public GeneralDataDelegateSimple
 	{
 	public:
 		explicit RandomizeParticlePosition(SPHBody &sph_body);
 		virtual ~RandomizeParticlePosition(){};
+		void updateRange(const IndexRange &particle_range, Real dt = 0.0);
 
 	protected:
 		StdLargeVec<Vecd> &pos_n_;
 		Real randomize_scale_;
-		virtual void Update(size_t index_i, Real dt = 0.0) override;
 	};
 
 	/**
@@ -249,6 +249,7 @@ namespace SPH
 	class BodyAverage : public SimpleDynamicsReduce<LocalSummationType>
 	{
 		using VariableType = typename LocalSummationType::ReduceReturnType;
+
 	public:
 		explicit BodyAverage(SPHBody &sph_body, const std::string &variable_name)
 			: SimpleDynamicsReduce<LocalSummationType>(sph_body, variable_name)
@@ -271,12 +272,14 @@ namespace SPH
 	class BodyPartByParticleAverage : public BodyPartByParticleReduce<LocalSummationType>
 	{
 		using VariableType = typename LocalSummationType::ReduceReturnType;
+
 	public:
 		explicit BodyPartByParticleAverage(BodyPartByParticle &body_part, SPHBody &sph_body, const std::string &variable_name)
 			: BodyPartByParticleReduce<LocalSummationType>(body_part, sph_body, variable_name)
 		{
 			this->quantity_name_ = "BodyPartByParticleAverage" + variable_name;
-		};;
+		};
+		;
 		virtual ~BodyPartByParticleAverage(){};
 
 		virtual VariableType outputResult(VariableType reduced_value) override

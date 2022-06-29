@@ -40,6 +40,7 @@ namespace SPH
 {
 	class GeometryShape;
 	class LevelSetShape;
+	class SPHAdaptation;
 
 	namespace relax_dynamics
 	{
@@ -54,18 +55,18 @@ namespace SPH
 		 * @brief relaxation dynamics for particle initialization
 		 * computing the square of time step size
 		 */
-		class GetTimeStepSizeSquare : public OldParticleDynamicsReduce<Real, ReduceMax>,
+		class GetTimeStepSizeSquare : public LocalParticleDynamicsReduce<Real, ReduceMax>,
 									  public RelaxDataDelegateSimple
 		{
 		public:
 			explicit GetTimeStepSizeSquare(SPHBody &sph_body);
 			virtual ~GetTimeStepSizeSquare(){};
+			Real reduceRange(const IndexRange &particle_range, Real dt = 0.0);
+			virtual Real outputResult(Real reduced_value) override;
 
 		protected:
 			StdLargeVec<Vecd> &dvel_dt_;
 			Real h_ref_;
-			Real ReduceFunction(size_t index_i, Real dt = 0.0) override;
-			Real OutputResult(Real reduced_value) override;
 		};
 
 		/**
@@ -74,49 +75,51 @@ namespace SPH
 		 * without considering contact interaction.
 		 * this is usually used for solid like bodies
 		 */
-		class RelaxationAccelerationInner : public OldInteractionDynamics, public RelaxDataDelegateInner
+		class RelaxationAccelerationInner : public LocalParticleDynamics, public RelaxDataDelegateInner
 		{
 		public:
 			explicit RelaxationAccelerationInner(BaseBodyRelationInner &inner_relation);
 			virtual ~RelaxationAccelerationInner(){};
+			virtual void interaction(size_t index_i, Real dt = 0.0);
 
 		protected:
 			StdLargeVec<Real> &Vol_;
 			StdLargeVec<Vecd> &dvel_dt_;
 			StdLargeVec<Vecd> &pos_n_;
-			virtual void Interaction(size_t index_i, Real dt = 0.0) override;
 		};
 
 		/**
-		 * @class RelaxationAccelerationInnerWithLevelSetCorrection
-		 * @brief we constrain particles to a level function representing the interafce.
+		 * @class RelaxationAccelerationInnerAndLevelSetCorrection
+		 * @brief we constrain particles to a level function representing the interface.
 		 */
-		class RelaxationAccelerationInnerWithLevelSetCorrection : public RelaxationAccelerationInner
+		class RelaxationAccelerationInnerAndLevelSetCorrection : public RelaxationAccelerationInner
 		{
 		public:
-			explicit RelaxationAccelerationInnerWithLevelSetCorrection(
+			explicit RelaxationAccelerationInnerAndLevelSetCorrection(
 				BaseBodyRelationInner &inner_relation);
-			virtual ~RelaxationAccelerationInnerWithLevelSetCorrection(){};
+			virtual ~RelaxationAccelerationInnerAndLevelSetCorrection(){};
+			void updateRange(const IndexRange &particle_range, Real dt = 0.0);
 
 		protected:
 			LevelSetShape *level_set_shape_;
-			virtual void Interaction(size_t index_i, Real dt = 0.0) override;
+			SPHAdaptation *sph_adaptation_;
 		};
 
 		/**
 		 * @class UpdateParticlePosition
 		 * @brief update the particle position for a time step
 		 */
-		class UpdateParticlePosition : public OldParticleDynamicsSimple,
+		class UpdateParticlePosition : public LocalParticleDynamics,
 									   public RelaxDataDelegateSimple
 		{
 		public:
 			explicit UpdateParticlePosition(SPHBody &sph_body);
 			virtual ~UpdateParticlePosition(){};
+			void updateRange(const IndexRange &particle_range, Real dt = 0.0);
 
 		protected:
 			StdLargeVec<Vecd> &pos_n_, &dvel_dt_;
-			virtual void Update(size_t index_i, Real dt = 0.0) override;
+			SPHAdaptation *sph_adaptation_;
 		};
 
 		/**
@@ -163,7 +166,7 @@ namespace SPH
 		/**
 		 * @class ShapeSurfaceBounding
 		 * @brief constrain surface particles by
-		 * map contrained particles to geometry face and
+		 * map constrained particles to geometry face and
 		 * r = r + phi * norm (vector distance to face)
 		 */
 		class ShapeSurfaceBounding : public PartDynamicsByCell,
@@ -183,7 +186,7 @@ namespace SPH
 		/**
 		 * @class ConstraintSurfaceParticles
 		 * @brief constrain surface particles by
-		 * map contrained particles to geometry face and
+		 * map constrained particles to geometry face and
 		 * r = r + phi * norm (vector distance to face)
 		 */
 		class ConstraintSurfaceParticles : public PartSimpleDynamicsByParticle,
@@ -204,21 +207,22 @@ namespace SPH
 		 * @class RelaxationStepInner
 		 * @brief carry out particle relaxation step of particles within the body
 		 */
-		class RelaxationStepInner : public OldParticleDynamics<void>
+		class RelaxationStepInner : public BaseParticleDynamics<void>
 		{
 		protected:
 			RealBody *real_body_;
 			BaseBodyRelationInner &inner_relation_;
 			NearShapeSurface near_shape_surface_;
+			UniquePtrKeeper<BaseParticleDynamics<void>> base_particle_dynamics_keeper_;
 
 		public:
 			explicit RelaxationStepInner(BaseBodyRelationInner &inner_relation,
 										 bool level_set_correction = false);
 			virtual ~RelaxationStepInner(){};
 
-			UniquePtr<RelaxationAccelerationInner> relaxation_acceleration_inner_;
-			GetTimeStepSizeSquare get_time_step_square_;
-			UpdateParticlePosition update_particle_position_;
+			BaseParticleDynamics<void> *relaxation_acceleration_inner_;
+			SimpleDynamicsReduce<GetTimeStepSizeSquare> get_time_step_square_;
+			SimpleDynamics<UpdateParticlePosition> update_particle_position_;
 			ShapeSurfaceBounding surface_bounding_;
 
 			virtual void exec(Real dt = 0.0) override;
@@ -270,12 +274,12 @@ namespace SPH
 		};
 
 		/**
-		* @class ShellMidSurfaceBounding
-		* @brief constrain particles by constraining particles to mid-surface.
-		* Note that level_set_refinement_ratio should be smaller than particle_spacing_ref_ / (0.05 * thickness_)
-		* because if level_set_refinement_ratio > particle_spacing_ref_ / (0.05 * thickness_), 
-		* there will be no level set field.
-		*/
+		 * @class ShellMidSurfaceBounding
+		 * @brief constrain particles by constraining particles to mid-surface.
+		 * Note that level_set_refinement_ratio should be smaller than particle_spacing_ref_ / (0.05 * thickness_)
+		 * because if level_set_refinement_ratio > particle_spacing_ref_ / (0.05 * thickness_),
+		 * there will be no level set field.
+		 */
 		class ShellMidSurfaceBounding : public PartDynamicsByCell,
 										public RelaxDataDelegateInner
 		{
@@ -305,8 +309,8 @@ namespace SPH
 			void correctNormalDirection();
 
 		public:
-			explicit ShellNormalDirectionPrediction(BaseBodyRelationInner &inner_relation, 
-				Real thickness, Real consistency_criterion = cos(Pi / 20.0));
+			explicit ShellNormalDirectionPrediction(BaseBodyRelationInner &inner_relation,
+													Real thickness, Real consistency_criterion = cos(Pi / 20.0));
 			virtual ~ShellNormalDirectionPrediction(){};
 
 			virtual void exec(Real dt = 0.0) override;
@@ -355,7 +359,7 @@ namespace SPH
 			};
 
 			class ConsistencyUpdatedCheck : public OldParticleDynamicsReduce<bool, ReduceAND>,
-								 public RelaxDataDelegateSimple
+											public RelaxDataDelegateSimple
 			{
 			public:
 				explicit ConsistencyUpdatedCheck(SPHBody &sph_body);

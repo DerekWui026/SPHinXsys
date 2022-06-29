@@ -25,22 +25,25 @@ namespace SPH
 	//=================================================================================================//
 	void TimeStepInitialization::updateRange(const blocked_range<size_t> &particle_range, Real dt)
 	{
-        for (size_t index_i = particle_range.begin(); index_i < particle_range.end(); ++index_i)
-        {
-            dvel_dt_prior_[index_i] = gravity_->InducedAcceleration(pos_n_[index_i]);
-        }
+		for (size_t index_i = particle_range.begin(); index_i < particle_range.end(); ++index_i)
+		{
+			dvel_dt_prior_[index_i] = gravity_->InducedAcceleration(pos_n_[index_i]);
+		}
 	}
 	//=================================================================================================//
 	RandomizeParticlePosition::RandomizeParticlePosition(SPHBody &sph_body)
-		: OldParticleDynamicsSimple(sph_body), DataDelegateSimple<SPHBody, BaseParticles>(sph_body),
+		: LocalParticleDynamics(sph_body), DataDelegateSimple<SPHBody, BaseParticles>(sph_body),
 		  pos_n_(particles_->pos_n_), randomize_scale_(sph_body.sph_adaptation_->MinimumSpacing()) {}
 	//=================================================================================================//
-	void RandomizeParticlePosition::Update(size_t index_i, Real dt)
+	void RandomizeParticlePosition::updateRange(const IndexRange &particle_range, Real dt)
 	{
-		Vecd &pos_n_i = pos_n_[index_i];
-		for (int k = 0; k < pos_n_i.size(); ++k)
+		for (size_t index_i = particle_range.begin(); index_i < particle_range.end(); ++index_i)
 		{
-			pos_n_i[k] += dt * (((double)rand() / (RAND_MAX)) - 0.5) * 2.0 * randomize_scale_;
+			Vecd &pos_n_i = pos_n_[index_i];
+			for (int k = 0; k < pos_n_i.size(); ++k)
+			{
+				pos_n_i[k] += dt * (((double)rand() / (RAND_MAX)) - 0.5) * 2.0 * randomize_scale_;
+			}
 		}
 	}
 	//=================================================================================================//

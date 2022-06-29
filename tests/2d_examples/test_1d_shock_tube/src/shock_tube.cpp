@@ -49,28 +49,30 @@ public:
 	explicit WavesInitialCondition(EulerianFluidBody &water)
 		: eulerian_compressible_fluid_dynamics::CompressibleFluidInitialCondition(water){};
 
-protected:
-	void Update(size_t index_i, Real dt) override
+	void updateRange(const IndexRange &particle_range, Real dt)
 	{
-		if (pos_n_[index_i][0] < DL / 10.0)
+		for (size_t index_i = particle_range.begin(); index_i < particle_range.end(); ++index_i)
 		{
-			// initial left state pressure,momentum and energy profile
-			rho_n_[index_i] = rho0_l;
-			p_[index_i] = p_l;
-			Real rho_e = p_[index_i] / (gamma_ - 1.0);
-			vel_n_[index_i] = velocity_l;
-			mom_[index_i] = rho0_l * velocity_l;
-			E_[index_i] = rho_e + 0.5 * rho_n_[index_i] * vel_n_[index_i].normSqr();
-		}
-		if (pos_n_[index_i][0] > DL / 10.0)
-		{
-			// initial right state pressure,momentum and energy profile
-			rho_n_[index_i] = rho0_r;
-			p_[index_i] = p_r;
-			Real rho_e = p_[index_i] / (gamma_ - 1.0);
-			vel_n_[index_i] = velocity_r;
-			mom_[index_i] = rho0_r * velocity_r;
-			E_[index_i] = rho_e + 0.5 * rho_n_[index_i] * vel_n_[index_i].normSqr();
+			if (pos_n_[index_i][0] < DL / 10.0)
+			{
+				// initial left state pressure,momentum and energy profile
+				rho_n_[index_i] = rho0_l;
+				p_[index_i] = p_l;
+				Real rho_e = p_[index_i] / (gamma_ - 1.0);
+				vel_n_[index_i] = velocity_l;
+				mom_[index_i] = rho0_l * velocity_l;
+				E_[index_i] = rho_e + 0.5 * rho_n_[index_i] * vel_n_[index_i].normSqr();
+			}
+			if (pos_n_[index_i][0] > DL / 10.0)
+			{
+				// initial right state pressure,momentum and energy profile
+				rho_n_[index_i] = rho0_r;
+				p_[index_i] = p_r;
+				Real rho_e = p_[index_i] / (gamma_ - 1.0);
+				vel_n_[index_i] = velocity_r;
+				mom_[index_i] = rho0_r * velocity_r;
+				E_[index_i] = rho_e + 0.5 * rho_n_[index_i] * vel_n_[index_i].normSqr();
+			}
 		}
 	}
 };
@@ -104,16 +106,16 @@ int main(int ac, char *av[])
 	//	Define the main numerical methods used in the simulation.
 	//	Note that there may be data dependence on the constructors of these methods.
 	//----------------------------------------------------------------------
-	WavesInitialCondition waves_initial_condition(wave_body);
+	SimpleDynamics<WavesInitialCondition> waves_initial_condition(wave_body);
 	// Initialize particle acceleration.
-	eulerian_compressible_fluid_dynamics::CompressibleFlowTimeStepInitialization initialize_wave_step(wave_body);
+	SimpleDynamics<eulerian_compressible_fluid_dynamics::CompressibleFlowTimeStepInitialization> initialize_wave_step(wave_body);
 	// Periodic BCs in y direction.
 	PeriodicConditionInAxisDirectionUsingCellLinkedList periodic_condition_y(wave_body, yAxis);
 	// Time step size with considering sound wave speed.
-	eulerian_compressible_fluid_dynamics::AcousticTimeStepSize get_wave_time_step_size(wave_body);
+	SimpleDynamicsReduce<eulerian_compressible_fluid_dynamics::AcousticTimeStepSize> get_wave_time_step_size(wave_body);
 	// Pressure, density and energy relaxation algorithm by use HLLC Riemann solver.
-	eulerian_compressible_fluid_dynamics::PressureRelaxationHLLCRiemannInner pressure_relaxation(wave_body_inner);
-	eulerian_compressible_fluid_dynamics::DensityAndEnergyRelaxationHLLCRiemannInner density_and_energy_relaxation(wave_body_inner);
+	InteractionDynamics1Level<eulerian_compressible_fluid_dynamics::PressureRelaxationHLLCRiemannInner> pressure_relaxation(wave_body_inner);
+	InteractionDynamics1Level<eulerian_compressible_fluid_dynamics::DensityAndEnergyRelaxationHLLCRiemannInner> density_and_energy_relaxation(wave_body_inner);
 	//----------------------------------------------------------------------
 	//	Define the methods for I/O operations, observations of the simulation.
 	//	Regression tests are also defined here.

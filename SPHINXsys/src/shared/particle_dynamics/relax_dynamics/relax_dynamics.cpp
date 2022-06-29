@@ -17,30 +17,31 @@ namespace SPH
 	{
 		//=================================================================================================//
 		GetTimeStepSizeSquare::GetTimeStepSizeSquare(SPHBody &sph_body)
-			: OldParticleDynamicsReduce<Real, ReduceMax>(sph_body),
+			: LocalParticleDynamicsReduce<Real, ReduceMax>(sph_body, 0.0),
 			  RelaxDataDelegateSimple(sph_body), dvel_dt_(particles_->dvel_dt_),
-			  h_ref_(sph_body.sph_adaptation_->ReferenceSmoothingLength())
+			  h_ref_(sph_body.sph_adaptation_->ReferenceSmoothingLength()) {}
+		//=================================================================================================//
+		Real GetTimeStepSizeSquare::reduceRange(const IndexRange &particle_range, Real dt)
 		{
-			// The pressure is constant, so the speed of sound is zero
-			initial_reference_ = 0.0;
+			Real temp = reference_;
+			for (size_t index_i = particle_range.begin(); index_i != particle_range.end(); ++index_i)
+			{
+				temp = operation_(temp, dvel_dt_[index_i].norm());
+			}
+			return temp;
 		}
 		//=================================================================================================//
-		Real GetTimeStepSizeSquare::ReduceFunction(size_t index_i, Real dt)
-		{
-			return dvel_dt_[index_i].norm();
-		}
-		//=================================================================================================//
-		Real GetTimeStepSizeSquare::OutputResult(Real reduced_value)
+		Real GetTimeStepSizeSquare::outputResult(Real reduced_value)
 		{
 			return 0.0625 * h_ref_ / (reduced_value + TinyReal);
 		}
 		//=================================================================================================//
 		RelaxationAccelerationInner::RelaxationAccelerationInner(BaseBodyRelationInner &inner_relation)
-			: OldInteractionDynamics(*inner_relation.sph_body_),
+			: LocalParticleDynamics(*inner_relation.sph_body_),
 			  RelaxDataDelegateInner(inner_relation),
 			  Vol_(particles_->Vol_), dvel_dt_(particles_->dvel_dt_), pos_n_(particles_->pos_n_) {}
 		//=================================================================================================//
-		void RelaxationAccelerationInner::Interaction(size_t index_i, Real dt)
+		void RelaxationAccelerationInner::interaction(size_t index_i, Real dt)
 		{
 			Vecd acceleration(0);
 			const Neighborhood &inner_neighborhood = inner_configuration_[index_i];
@@ -52,27 +53,32 @@ namespace SPH
 			dvel_dt_[index_i] = acceleration;
 		}
 		//=================================================================================================//
-		RelaxationAccelerationInnerWithLevelSetCorrection::
-			RelaxationAccelerationInnerWithLevelSetCorrection(BaseBodyRelationInner &inner_relation)
-			: RelaxationAccelerationInner(inner_relation)
-		{
-			level_set_shape_ = DynamicCast<LevelSetShape>(this, body_->body_shape_);
-		}
+		RelaxationAccelerationInnerAndLevelSetCorrection::
+			RelaxationAccelerationInnerAndLevelSetCorrection(BaseBodyRelationInner &inner_relation)
+			: RelaxationAccelerationInner(inner_relation),
+			  level_set_shape_(DynamicCast<LevelSetShape>(this, body_->body_shape_)),
+			  sph_adaptation_(body_->sph_adaptation_) {}
 		//=================================================================================================//
-		void RelaxationAccelerationInnerWithLevelSetCorrection::Interaction(size_t index_i, Real dt)
+		void RelaxationAccelerationInnerAndLevelSetCorrection::updateRange(const IndexRange &particle_range, Real dt)
 		{
-			RelaxationAccelerationInner::Interaction(index_i, dt);
-			dvel_dt_[index_i] -= 2.0 * level_set_shape_->computeKernelGradientIntegral(
-										   pos_n_[index_i], sph_adaptation_->SmoothingLengthRatio(index_i));
+			for (size_t index_i = particle_range.begin(); index_i < particle_range.end(); ++index_i)
+			{
+				dvel_dt_[index_i] -= 2.0 * level_set_shape_->computeKernelGradientIntegral(
+											   pos_n_[index_i], sph_adaptation_->SmoothingLengthRatio(index_i));
+			}
 		}
 		//=================================================================================================//
 		UpdateParticlePosition::UpdateParticlePosition(SPHBody &sph_body)
-			: OldParticleDynamicsSimple(sph_body), RelaxDataDelegateSimple(sph_body),
-			  pos_n_(particles_->pos_n_), dvel_dt_(particles_->dvel_dt_) {}
+			: LocalParticleDynamics(sph_body), RelaxDataDelegateSimple(sph_body),
+			  pos_n_(particles_->pos_n_), dvel_dt_(particles_->dvel_dt_),
+			  sph_adaptation_(body_->sph_adaptation_) {}
 		//=================================================================================================//
-		void UpdateParticlePosition::Update(size_t index_i, Real dt_square)
+		void UpdateParticlePosition::updateRange(const IndexRange &particle_range, Real dt_square)
 		{
-			pos_n_[index_i] += dvel_dt_[index_i] * dt_square * 0.5 / sph_adaptation_->SmoothingLengthRatio(index_i);
+			for (size_t index_i = particle_range.begin(); index_i < particle_range.end(); ++index_i)
+			{
+				pos_n_[index_i] += dvel_dt_[index_i] * dt_square * 0.5 / sph_adaptation_->SmoothingLengthRatio(index_i);
+			}
 		}
 		//=================================================================================================//
 		UpdateSmoothingLengthRatioByBodyShape::UpdateSmoothingLengthRatioByBodyShape(SPHBody &sph_body)
@@ -168,16 +174,23 @@ namespace SPH
 		//=================================================================================================//
 		RelaxationStepInner::
 			RelaxationStepInner(BaseBodyRelationInner &inner_relation, bool level_set_correction)
-			: OldParticleDynamics<void>(*inner_relation.sph_body_),
-			  real_body_(inner_relation.real_body_),
-			  inner_relation_(inner_relation),
-			  near_shape_surface_(*real_body_),
+			: BaseParticleDynamics<void>(), real_body_(inner_relation.real_body_),
+			  inner_relation_(inner_relation), near_shape_surface_(*real_body_),
 			  get_time_step_square_(*real_body_), update_particle_position_(*real_body_),
-			  surface_bounding_(*real_body_, near_shape_surface_),
-			  relaxation_acceleration_inner_(
-				  !level_set_correction
-					  ? std::move(makeUnique<RelaxationAccelerationInner>(inner_relation))
-					  : std::move(makeUnique<RelaxationAccelerationInnerWithLevelSetCorrection>(inner_relation))) {}
+			  surface_bounding_(*real_body_, near_shape_surface_)
+		{
+			if (!level_set_correction)
+			{
+				relaxation_acceleration_inner_ =
+					base_particle_dynamics_keeper_.createPtr<InteractionDynamics<RelaxationAccelerationInner>>(inner_relation);
+			}
+			else
+			{
+				relaxation_acceleration_inner_ =
+					base_particle_dynamics_keeper_
+						.createPtr<InteractionDynamicsAndUpdate<RelaxationAccelerationInnerAndLevelSetCorrection>>(inner_relation);
+			}
+		}
 		//=================================================================================================//
 		void RelaxationStepInner::exec(Real dt)
 		{

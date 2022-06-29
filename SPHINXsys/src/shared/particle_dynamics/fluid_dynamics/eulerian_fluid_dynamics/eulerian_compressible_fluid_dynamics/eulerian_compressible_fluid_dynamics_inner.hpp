@@ -22,7 +22,7 @@ namespace SPH
 			  riemann_solver_(*material_, *material_) {}
 		//=================================================================================================//
 		template <class RiemannSolverType>
-		void BasePressureRelaxationInner<RiemannSolverType>::Interaction(size_t index_i, Real dt)
+		void BasePressureRelaxationInner<RiemannSolverType>::interaction(size_t index_i, Real dt)
 		{
 			CompressibleFluidState state_i(rho_n_[index_i], vel_n_[index_i], p_[index_i], E_[index_i]);
 			Vecd momentum_change_rate = dmom_dt_prior_[index_i];
@@ -52,7 +52,7 @@ namespace SPH
 			  riemann_solver_(*material_, *material_) {}
 		//=================================================================================================//
 		template <class RiemannSolverType>
-		void BaseDensityAndEnergyRelaxationInner<RiemannSolverType>::Interaction(size_t index_i, Real dt)
+		void BaseDensityAndEnergyRelaxationInner<RiemannSolverType>::interaction(size_t index_i, Real dt)
 		{
 			CompressibleFluidState state_i(rho_n_[index_i], vel_n_[index_i], p_[index_i], E_[index_i]);
 			Real density_change_rate = 0.0;
@@ -66,7 +66,7 @@ namespace SPH
 
 				CompressibleFluidState state_j(rho_n_[index_j], vel_n_[index_j], p_[index_j], E_[index_j]);
 				CompressibleFluidState interface_state = riemann_solver_.getInterfaceState(state_i, state_j, e_ij);
-				//Vecd vel_star = interface_state.get_state_vel();
+				// Vecd vel_star = interface_state.get_state_vel();
 				Vecd vel_star = interface_state.vel_;
 				Real p_star = interface_state.p_;
 				Real rho_star = interface_state.rho_;
@@ -82,5 +82,5 @@ namespace SPH
 	}
 	//=================================================================================================//
 }
-#endif //EULERIAN_COMPRESSIBLEFLUID_DYNAMICS_INNER_HPP
+#endif // EULERIAN_COMPRESSIBLEFLUID_DYNAMICS_INNER_HPP
 //=================================================================================================//
