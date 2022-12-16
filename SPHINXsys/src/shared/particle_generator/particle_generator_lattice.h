@@ -41,6 +41,7 @@ namespace SPH
 	class ParticleRefinementByShape;
 	class ShellParticles;
 	class ParticleSplitAndMerge;
+	class ParticleRefinementByPosition;
 
 	/**
 	 * @class BaseParticleGeneratorLattice
@@ -90,6 +91,22 @@ namespace SPH
 		/** Initialize smoothing length ratio. */
 		virtual void initializeSmoothingLengthRatio(Real local_spacing);
 	};
+
+	class ParticleGeneratorMultiResolutionByPosition : public ParticleGeneratorLattice
+	{
+	public:
+		explicit ParticleGeneratorMultiResolutionByPosition(SPHBody & sph_body);
+		virtual ~ParticleGeneratorMultiResolutionByPosition() {};
+	protected:
+		
+		ParticleRefinementByPosition* particle_adaptation_;
+		
+		StdLargeVec<Real> &h_ratio_;
+		
+		virtual void initializePositionAndVolumetricMeasure(const Vecd & position, Real volume) override;
+		virtual void initializeSmoothingLengthRatio(Real local_spacing);
+	};
+
 
 	/**
 	 * @class ParticleGeneratorSplitAndMerge

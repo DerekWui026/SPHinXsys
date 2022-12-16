@@ -148,6 +148,25 @@ namespace SPH
 	};
 
 	/**
+	 * @class ParticleRefinementByShape
+	 * @brief Adaptive resolutions within a SPH body according to the distance to the body surface.
+	 */
+	class ParticleRefinementByPosition : public ParticleWithLocalRefinement
+	{
+	public:
+		ParticleRefinementByPosition(SPHBody& sph_body, Real smoothing_length_ratio,
+			Real system_resolution_ratio, int local_refinement_level, Real y_axis_value);
+		virtual ~ParticleRefinementByPosition() {};
+		Real getLocalSpacing(Shape& shape, const Vecd& position);
+
+	protected:
+
+		Real y_axis_value_;
+		Real smoothedSpacing(const Real& measure, const Real& transition_thickness);
+	};
+
+
+	/**
 	 * @class ParticleRefinementNearSurface
 	 * @brief Adaptive resolutions within a SPH body according to the distance to the body surface.
 	 */

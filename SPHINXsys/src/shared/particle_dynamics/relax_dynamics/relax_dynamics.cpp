@@ -88,6 +88,25 @@ namespace SPH
 			Vol_[index_i] = powerN(local_spacing, Dimensions);
 		}
 		//=================================================================================================//
+		UpdateSmoothingLengthRatioByPosition::UpdateSmoothingLengthRatioByPosition(SPHBody& sph_body)
+			: LocalDynamics(sph_body), RelaxDataDelegateSimple(sph_body),
+			h_ratio_(*particles_->getVariableByName<Real>("SmoothingLengthRatio")),
+			Vol_(particles_->Vol_), pos_n_(particles_->pos_),
+			body_shape_(*sph_body.body_shape_)
+		{
+
+			particle_spacing_by_position_ =
+				DynamicCast<ParticleRefinementByPosition>(this, sph_body.sph_adaptation_);
+			reference_spacing_ = particle_spacing_by_position_->ReferenceSpacing();
+		}
+		//=================================================================================================//
+		void UpdateSmoothingLengthRatioByPosition::update(size_t index_i, Real dt_square)
+		{
+			Real local_spacing = particle_spacing_by_position_->getLocalSpacing(body_shape_, pos_n_[index_i]);
+			h_ratio_[index_i] = reference_spacing_ / local_spacing;
+			Vol_[index_i] = powerN(local_spacing, Dimensions);
+		}
+		//=================================================================================================//
 		RelaxationAccelerationComplex::
 			RelaxationAccelerationComplex(ComplexRelation &complex_relation)
 			: LocalDynamics(complex_relation.sph_body_),

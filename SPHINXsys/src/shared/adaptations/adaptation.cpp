@@ -153,7 +153,33 @@ namespace SPH
 		}
 		return target_spacing;
 	}
+	//===============================================================================================//
+	ParticleRefinementByPosition::ParticleRefinementByPosition(SPHBody & sph_body, Real smoothing_length_ratio,
+		Real system_resolution_ratio, int local_refinement_level, Real y_axis_value)
+		: ParticleWithLocalRefinement(sph_body, smoothing_length_ratio,
+			system_resolution_ratio, local_refinement_level)
+	{
+		y_axis_value_ = y_axis_value;
+	}
 	//=================================================================================================//
+	Real ParticleRefinementByPosition::smoothedSpacing(const Real &measure, const Real &transition_thickness)
+	{
+		Real ratio_ref = measure / (2.0 * transition_thickness);
+		Real target_spacing = coarsest_spacing_bound_;
+		if (ratio_ref < kernel_ptr_->KernelSize())
+		{
+			Real weight = kernel_ptr_->W_1D(ratio_ref) / kernel_ptr_->W_1D(0.0);
+			target_spacing = weight * finest_spacing_bound_ + (1.0 - weight) * coarsest_spacing_bound_;
+		}
+		return target_spacing;
+	}
+	//=================================================================================================//
+	Real ParticleRefinementByPosition::getLocalSpacing(Shape& shape, const Vecd& position)
+	{
+		Real phi = fabs(y_axis_value_-position[1]) ;
+		return smoothedSpacing(phi, y_axis_value_*0.5);
+	}
+	//===============================================================================================//
 	Real ParticleRefinementNearSurface::getLocalSpacing(Shape &shape, const Vecd &position)
 	{
 		Real phi = fabs(shape.findSignedDistance(position));

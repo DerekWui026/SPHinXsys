@@ -52,6 +52,31 @@ namespace SPH
 		h_ratio_.push_back(particle_adaptation_->ReferenceSpacing() / local_spacing);
 	}
 	//=================================================================================================//
+	ParticleGeneratorMultiResolutionByPosition::ParticleGeneratorMultiResolutionByPosition(SPHBody& sph_body)
+		: ParticleGeneratorLattice(sph_body),
+		particle_adaptation_(DynamicCast<ParticleRefinementByPosition>(this, sph_body.sph_adaptation_)),
+		h_ratio_(*base_particles_.getVariableByName<Real>("SmoothingLengthRatio"))
+	{
+		lattice_spacing_ = particle_adaptation_->MinimumSpacing();
+	}
+	//=================================================================================================//
+	void ParticleGeneratorMultiResolutionByPosition::
+		initializePositionAndVolumetricMeasure(const Vecd & position, Real volume)
+	{
+		Real local_particle_spacing = particle_adaptation_->getLocalSpacing(body_shape_, position);
+		Real local_particle_volume_ratio = powerN(lattice_spacing_ / local_particle_spacing, Dimensions);
+		if ((double)rand() / (RAND_MAX) < local_particle_volume_ratio)
+		{
+			ParticleGeneratorLattice::initializePositionAndVolumetricMeasure(position, volume / local_particle_volume_ratio);
+			initializeSmoothingLengthRatio(local_particle_spacing);
+		}
+	}
+	//=================================================================================================//
+	void ParticleGeneratorMultiResolutionByPosition::initializeSmoothingLengthRatio(Real local_spacing)
+	{
+	h_ratio_.push_back(particle_adaptation_->ReferenceSpacing() / local_spacing);
+	}
+	//=================================================================================================//
 	ParticleGeneratorSplitAndMerge::ParticleGeneratorSplitAndMerge(SPHBody &sph_body)
 		: ParticleGeneratorLattice(sph_body),
 		  particle_adaptation_(DynamicCast<ParticleSplitAndMerge>(this, sph_body.sph_adaptation_)),

@@ -144,6 +144,25 @@ namespace SPH
 		};
 
 		/**
+ * @class UpdateSmoothingLengthRatioByPosition
+ * @brief update the particle smoothing length ratio according to specific positions
+ */
+		class UpdateSmoothingLengthRatioByPosition : public LocalDynamics,
+			public RelaxDataDelegateSimple
+		{
+		public:
+			explicit UpdateSmoothingLengthRatioByPosition(SPHBody& sph_body);
+			virtual ~UpdateSmoothingLengthRatioByPosition() {};
+			void update(size_t index_i, Real dt = 0.0);
+		protected:
+			StdLargeVec<Real>& h_ratio_, & Vol_;
+			StdLargeVec<Vecd>& pos_n_;
+			Shape& body_shape_;
+			ParticleRefinementByPosition *particle_spacing_by_position_;
+			Real reference_spacing_;
+		};
+
+		/**
 		 * @class RelaxationAccelerationComplex
 		 * @brief compute relaxation acceleration while consider the present of contact bodies
 		 * with considering contact interaction
