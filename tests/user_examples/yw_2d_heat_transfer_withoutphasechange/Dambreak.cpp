@@ -275,7 +275,7 @@ int main(int ac, char *av[])
 	/** Initialize particle acceleration. */
 	SimpleDynamics<NormalDirectionFromShapeAndOp> inner_normal_direction(wall_boundary, "InnerWall");
 	SharedPtr<Gravity> gravity_ptr = makeShared<Gravity>(Vecd(0.0, -gravity_g));
-	SimpleDynamics<TimeStepInitialization> initialize_a_water_step(water_block, gravity_ptr); //makeShared<VariableGravity>());
+	SimpleDynamics<TimeStepInitialization> initialize_a_water_step(water_block, makeShared<VariableGravity>());
 	//SimpleDynamics<TimeStepInitialization> initialize_a_vapor_step(vapor_block, makeShared<VariableGravity>());
 
 	/** Evaluation of density by summation approach. */
