@@ -156,7 +156,7 @@ int main(int ac, char *av[])
 	//	Creating bodies with corresponding materials and particles.
 	//----------------------------------------------------------------------
 	FluidBody water_block(sph_system, makeShared<WaterBlock>("WaterBody"));
-	water_block.defineAdaptation<ParticleRefinementByPosition>(1.3, 1.0, 2, densed_point);
+	water_block.defineAdaptation<ParticleRefinementByPosition>(1.3, 1.0, 1, densed_point);
 	//water_block.defineAdaptation<SPHAdaptation>(1.3, 2);
 	water_block.defineParticlesAndMaterial<FluidParticles, WeaklyCompressibleFluid>(rho0_f, c_f);
 	water_block.defineBodyLevelSetShape()->writeLevelSet(io_environment);
@@ -281,10 +281,12 @@ int main(int ac, char *av[])
 	/** Evaluation of density by summation approach. */
 	InteractionWithUpdate<fluid_dynamics::DensitySummationFreeSurfaceComplexAdaptive>
 		update_water_density_by_summation(water_wall_complex);
+	InteractionWithUpdate<fluid_dynamics::SpatialTemporalFreeSurfaceIdentificationComplex>
+		free_surface_indicator(water_wall_complex);
 	//InteractionWithUpdate<fluid_dynamics::DensitySummationComplexAdaptive>
 	//	update_vapor_density_by_summation(vapor_wall_contact,vapor_water_complex);
-//	InteractionDynamics<fluid_dynamics::TransportVelocityCorrectionComplexAdaptive>
-	//	vapor_transport_correction(vapor_wall_contact,vapor_water_complex);
+	InteractionDynamics<fluid_dynamics::TransportVelocityCorrectionComplexAdaptive>
+		water_transport_correction(water_wall_complex);
 	/** Time step size without considering sound wave speed. */
 	ReduceDynamics<fluid_dynamics::AdvectionTimeStepSize> get_water_advection_time_step_size(water_block, U_max);
 	//ReduceDynamics<fluid_dynamics::AdvectionTimeStepSize> get_vapor_advection_time_step_size(vapor_block, U_max);
@@ -373,7 +375,7 @@ int main(int ac, char *av[])
 			time_instance = tick_count::now();
 			initialize_a_water_step.parallel_exec();
 			//initialize_a_vapor_step.parallel_exec();
-
+			free_surface_indicator.parallel_exec();
 			Real Dt= get_water_advection_time_step_size.parallel_exec();
 			//Real Dt_a = get_vapor_advection_time_step_size.parallel_exec();
 			//Real Dt = SMIN(Dt_f, Dt_a);
@@ -381,7 +383,7 @@ int main(int ac, char *av[])
 			update_water_density_by_summation.parallel_exec();
 		//	update_vapor_density_by_summation.parallel_exec();
 
-		//	vapor_transport_correction.parallel_exec(Dt);
+	 	    water_transport_correction.parallel_exec();
 
 			interval_computing_time_step += tick_count::now() - time_instance;
 
