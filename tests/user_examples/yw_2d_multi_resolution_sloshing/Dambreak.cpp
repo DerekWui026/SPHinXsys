@@ -117,7 +117,7 @@ public:
 		//if (time_ <= 0.24)
 		//{
 			//global_acceleration_[0] = 1312.547554*pow(time_, 4) - 449.087146*pow(time_, 3) - 79.178542*pow(time_, 2) - 6.428713*time_ + 7.956987;
-		global_acceleration_[0] =  0.6*gravity_g*cos(2 * PI*time_);
+		global_acceleration_[0] =  0.5*gravity_g*cos(2 * PI*time_);
 		//}
 		//else
 		//{
@@ -128,6 +128,26 @@ public:
 };
 
 Real densed_point = 0.06;
+
+
+Real h = 1.3 * particle_spacing_ref;
+MultiPolygon createWaveProbeShape4()
+{
+	std::vector<Vecd> pnts;
+	pnts.push_back(Vecd(0.4 - h, 0.0));
+	pnts.push_back(Vecd(0.4- h, 0.12));
+	pnts.push_back(Vecd(0.4 + h, 0.12));
+	pnts.push_back(Vecd(0.4+ h, 0.0));
+	pnts.push_back(Vecd(0.4 - h, 0.0));
+
+	MultiPolygon multi_polygon;
+	multi_polygon.addAPolygon(pnts, ShapeBooleanOps::add);
+	return multi_polygon;
+}
+
+
+
+
 //----------------------------------------------------------------------
 //	Main program starts here.
 //----------------------------------------------------------------------
@@ -281,12 +301,15 @@ int main(int ac, char *av[])
 	/** Evaluation of density by summation approach. */
 	InteractionWithUpdate<fluid_dynamics::DensitySummationFreeSurfaceComplexAdaptive>
 		update_water_density_by_summation(water_wall_complex);
+
 	InteractionWithUpdate<fluid_dynamics::SpatialTemporalFreeSurfaceIdentificationComplex>
 		free_surface_indicator(water_wall_complex);
-	//InteractionWithUpdate<fluid_dynamics::DensitySummationComplexAdaptive>
-	//	update_vapor_density_by_summation(vapor_wall_contact,vapor_water_complex);
 	InteractionDynamics<fluid_dynamics::TransportVelocityCorrectionComplexAdaptive>
 		water_transport_correction(water_wall_complex);
+	//InteractionWithUpdate<fluid_dynamics::DensitySummationComplexAdaptive>
+	//	update_vapor_density_by_summation(vapor_wall_contact,vapor_water_complex);
+//	InteractionDynamics<fluid_dynamics::TransportVelocityCorrectionComplexAdaptive>
+	//	vapor_transport_correction(vapor_wall_contact,vapor_water_complex);
 	/** Time step size without considering sound wave speed. */
 	ReduceDynamics<fluid_dynamics::AdvectionTimeStepSize> get_water_advection_time_step_size(water_block, U_max);
 	//ReduceDynamics<fluid_dynamics::AdvectionTimeStepSize> get_vapor_advection_time_step_size(vapor_block, U_max);
@@ -304,7 +327,10 @@ int main(int ac, char *av[])
 //	Dynamics1Level<fluid_dynamics::MultiPhaseIntegration2ndHalfRiemannWithWall>
 	//	vapor_density_relaxation(vapor_wall_contact,vapor_water_complex);
 
-
+		/** WaveProbes. */
+	BodyRegionByCell wave_probe_buffer_no_4(water_block, makeShared<MultiPolygonShape>(createWaveProbeShape4(), "WaveProbe_04"));
+	ReducedQuantityRecording<ReduceDynamics<fluid_dynamics::FreeSurfaceHeight, BodyRegionByCell>>
+		wave_probe_4(io_environment, wave_probe_buffer_no_4);
 	//----------------------------------------------------------------------
 	//	Define the methods for I/O operations, observations
 	//	and regression tests of the simulation.
@@ -360,7 +386,7 @@ int main(int ac, char *av[])
 	//thermo_water_initial_condition.parallel_exec();
 	//thermo_vapor_initial_condition.parallel_exec();
 	body_states_recording.writeToFile(0);
-
+	wave_probe_4.writeToFile(0);
 	//----------------------------------------------------------------------
 	//	Main loop starts here.
 	//----------------------------------------------------------------------
@@ -375,15 +401,16 @@ int main(int ac, char *av[])
 			time_instance = tick_count::now();
 			initialize_a_water_step.parallel_exec();
 			//initialize_a_vapor_step.parallel_exec();
-			free_surface_indicator.parallel_exec();
+			//free_surface_indicator.parallel_exec();
 			Real Dt= get_water_advection_time_step_size.parallel_exec();
 			//Real Dt_a = get_vapor_advection_time_step_size.parallel_exec();
 			//Real Dt = SMIN(Dt_f, Dt_a);
 
 			update_water_density_by_summation.parallel_exec();
+			//water_transport_correction.parallel_exec();
 		//	update_vapor_density_by_summation.parallel_exec();
 
-	 	    water_transport_correction.parallel_exec();
+		//	vapor_transport_correction.parallel_exec(Dt);
 
 			interval_computing_time_step += tick_count::now() - time_instance;
 
@@ -436,6 +463,7 @@ int main(int ac, char *av[])
 
 		tick_count t2 = tick_count::now();
 		body_states_recording.writeToFile();
+		wave_probe_4.writeToFile();
 		tick_count t3 = tick_count::now();
 		interval += t3 - t2;
 	}
