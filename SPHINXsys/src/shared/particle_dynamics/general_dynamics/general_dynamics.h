@@ -107,16 +107,17 @@ namespace SPH
 	{
 	public:
 		explicit ParticleSmoothing(BaseInnerRelation &inner_relation, const std::string &variable_name)
-			: LocalDynamics(inner_relation.getSPHBody()), GeneralDataDelegateInner(inner_relation),
-			  W0_(sph_body_.sph_adaptation_->getKernel()->W0(ZeroVecd)),
+			: LocalDynamics(inner_relation.sph_body_), GeneralDataDelegateInner(inner_relation),
+			  W0_(sph_body_.sph_adaptation_->getKernel()->W0(zero_vec)),
 			  smoothed_(*particles_->template getVariableByName<VariableType>(variable_name))
 		{	
+			Vecd zero = Vecd::Zero();
 			particles_->registerVariable(temp_, variable_name + "_temp");
 		}
 
 		virtual ~ParticleSmoothing(){};
 
-		inline void interaction(size_t index_i, Real dt = 0.0)
+		void interaction(size_t index_i, Real dt = 0.0)
 		{
 			Real weight = W0_;
 			VariableType summation = W0_ * smoothed_[index_i];

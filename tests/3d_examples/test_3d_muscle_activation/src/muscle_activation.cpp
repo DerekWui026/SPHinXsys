@@ -81,7 +81,7 @@ int main()
 	ReduceDynamics<solid_dynamics::AcousticTimeStepSize> computing_time_step_size(myocardium_muscle_body);
 	SimpleDynamics<MyocardiumActivation> myocardium_activation(myocardium_muscle_body);
 	BodyRegionByParticle holder(myocardium_muscle_body, makeShared<TransformShape<GeometricShapeBox>>(Transformd(translation_holder), halfsize_holder));
-	SimpleDynamics<solid_dynamics::FixedInAxisDirection> constrain_holder(holder, Vecd(0.0, 1.0, 1.0));
+	SimpleDynamics<solid_dynamics::FixedInAxisDirection, BodyRegionByParticle> constrain_holder(holder, Vecd(0.0, 1.0, 1.0));
 	//----------------------------------------------------------------------
 	//	Define the methods for I/O operations, observations
 	//	and regression tests of the simulation.
@@ -95,7 +95,7 @@ int main()
 	GlobalStaticVariables::physical_time_ = 0.0;
 	system.initializeSystemCellLinkedLists();
 	system.initializeSystemConfigurations();
-	corrected_configuration.exec();
+	corrected_configuration.parallel_exec();
 	//----------------------------------------------------------------------
 	//	Setup for time-stepping control
 	//----------------------------------------------------------------------
@@ -106,8 +106,8 @@ int main()
 	//----------------------------------------------------------------------
 	//	Statistics for CPU time
 	//----------------------------------------------------------------------
-	TickCount t1 = TickCount::now();
-	TimeInterval interval;
+	tick_count t1 = tick_count::now();
+	tick_count::interval_t interval;
 	//----------------------------------------------------------------------
 	//	First output before the main loop.
 	//----------------------------------------------------------------------
@@ -126,25 +126,25 @@ int main()
 						  << GlobalStaticVariables::physical_time_ << "	dt: "
 						  << dt << "\n";
 			}
-			myocardium_activation.exec(dt);
-			stress_relaxation_first_half.exec(dt);
-			constrain_holder.exec(dt);
-			stress_relaxation_second_half.exec(dt);
+			myocardium_activation.parallel_exec(dt);
+			stress_relaxation_first_half.parallel_exec(dt);
+			constrain_holder.parallel_exec(dt);
+			stress_relaxation_second_half.parallel_exec(dt);
 
 			ite++;
-			dt = computing_time_step_size.exec();
+			dt = computing_time_step_size.parallel_exec();
 			integration_time += dt;
 			GlobalStaticVariables::physical_time_ += dt;
 		}
 
-		TickCount t2 = TickCount::now();
+		tick_count t2 = tick_count::now();
 		write_states.writeToFile();
-		TickCount t3 = TickCount::now();
+		tick_count t3 = tick_count::now();
 		interval += t3 - t2;
 	}
-	TickCount t4 = TickCount::now();
+	tick_count t4 = tick_count::now();
 
-	TimeInterval tt;
+	tick_count::interval_t tt;
 	tt = t4 - t1 - interval;
 	std::cout << "Total wall time for computation: " << tt.seconds() << " seconds." << std::endl;
 

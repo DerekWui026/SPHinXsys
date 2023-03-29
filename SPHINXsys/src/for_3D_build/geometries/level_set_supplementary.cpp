@@ -417,13 +417,10 @@ namespace SPH
 						Real phi_neighbor = DataValueFromGlobalIndex(phi_, neighbor_index);
 						if (phi_neighbor > -data_spacing_)
 						{
-							Vecd phi_gradient = DataValueFromGlobalIndex(phi_gradient_, neighbor_index);
-							Vecd integral_position = global_mesh_.GridPositionFromIndex(neighbor_index);
-							Vecd displacement = position - integral_position;
+							Vecd displacement = position - global_mesh_.GridPositionFromIndex(neighbor_index);
 							Real distance = displacement.norm();
 							if (distance < cutoff_radius)
-								integral += kernel_.W(global_h_ratio_, distance, displacement) *
-											CutCellVolumeFraction(phi_neighbor, phi_gradient, data_spacing_);
+								integral += kernel_.W(global_h_ratio_, distance, displacement) * computeHeaviside(phi_neighbor, data_spacing_);
 						}
 					}
 		}
@@ -448,14 +445,11 @@ namespace SPH
 						Real phi_neighbor = DataValueFromGlobalIndex(phi_, neighbor_index);
 						if (phi_neighbor > -data_spacing_)
 						{
-							Vecd phi_gradient = DataValueFromGlobalIndex(phi_gradient_, neighbor_index);
-							Vecd integral_position = global_mesh_.GridPositionFromIndex(neighbor_index);
-							Vecd displacement = position - integral_position;
+							Vecd displacement = position - global_mesh_.GridPositionFromIndex(neighbor_index);
 							Real distance = displacement.norm();
 							if (distance < cutoff_radius)
 								integral += kernel_.dW(global_h_ratio_, distance, displacement) *
-											CutCellVolumeFraction(phi_neighbor, phi_gradient, data_spacing_) *
-											displacement / (distance + TinyReal);
+											computeHeaviside(phi_neighbor, data_spacing_) * displacement / (distance + TinyReal);
 						}
 					}
 		}

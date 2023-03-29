@@ -10,7 +10,7 @@ namespace SPH
 	DampingBySplittingInner<VariableType>::
 		DampingBySplittingInner(BaseInnerRelation &inner_relation,
 								const std::string &variable_name, Real eta)
-		: LocalDynamics(inner_relation.getSPHBody()),
+		: LocalDynamics(inner_relation.sph_body_),
 		  DissipationDataInner(inner_relation), eta_(eta),
 		  Vol_(particles_->Vol_), mass_(particles_->mass_),
 		  variable_(*particles_->getVariableByName<VariableType>(variable_name)) {}
@@ -66,8 +66,7 @@ namespace SPH
 	}
 	//=================================================================================================//
 	template <typename VariableType>
-	void DampingBySplittingInner<VariableType>::
-		interaction(size_t index_i, Real dt)
+	void DampingBySplittingInner<VariableType>::interaction(size_t index_i, Real dt)
 	{
 		ErrorAndParameters<VariableType> error_and_parameters = computeErrorAndParameters(index_i, dt);
 		updateStates(index_i, dt, error_and_parameters);
@@ -100,6 +99,8 @@ namespace SPH
 		/** Contact interaction. */
 		for (size_t k = 0; k < this->contact_configuration_.size(); ++k)
 		{
+			StdLargeVec<Real> &Vol_k = *(this->contact_Vol_[k]);
+			StdLargeVec<Real> &mass_k = *(this->contact_mass_[k]);
 			StdLargeVec<VariableType> &variable_k = *(this->contact_variable_[k]);
 			Neighborhood &contact_neighborhood = (*this->contact_configuration_[k])[index_i];
 			for (size_t n = 0; n != contact_neighborhood.current_size_; ++n)
@@ -131,6 +132,7 @@ namespace SPH
 		/** Contact interaction. */
 		for (size_t k = 0; k < this->contact_configuration_.size(); ++k)
 		{
+			StdLargeVec<Real> &Vol_k = *(this->contact_Vol_[k]);
 			StdLargeVec<Real> &mass_k = *(this->contact_mass_[k]);
 			StdLargeVec<VariableType> &variable_k = *(this->contact_variable_[k]);
 			Neighborhood &contact_neighborhood = (*this->contact_configuration_[k])[index_i];
@@ -180,6 +182,7 @@ namespace SPH
 		/** Contact interaction. */
 		for (size_t k = 0; k < this->contact_configuration_.size(); ++k)
 		{
+			StdLargeVec<Real> &Vol_k = *(this->wall_Vol_[k]);
 			StdLargeVec<VariableType> &variable_k = *(this->wall_variable_[k]);
 			Neighborhood &contact_neighborhood = (*DissipationDataWithWall::contact_configuration_[k])[index_i];
 			for (size_t n = 0; n != contact_neighborhood.current_size_; ++n)
@@ -202,15 +205,14 @@ namespace SPH
 	DampingPairwiseInner<VariableType>::
 		DampingPairwiseInner(BaseInnerRelation &inner_relation,
 							 const std::string &variable_name, Real eta)
-		: LocalDynamics(inner_relation.getSPHBody()),
+		: LocalDynamics(inner_relation.sph_body_),
 		  DissipationDataInner(inner_relation),
 		  Vol_(particles_->Vol_), mass_(particles_->mass_),
 		  variable_(*particles_->getVariableByName<VariableType>(variable_name)),
 		  eta_(eta) {}
 	//=================================================================================================//
 	template <typename VariableType>
-	void DampingPairwiseInner<VariableType>::
-		interaction(size_t index_i, Real dt)
+	void DampingPairwiseInner<VariableType>::interaction(size_t index_i, Real dt)
 	{
 		Real Vol_i = Vol_[index_i];
 		Real mass_i = mass_[index_i];
@@ -267,8 +269,7 @@ namespace SPH
 								 complex_relation.getContactRelation(), variable_name, eta) {}
 	//=================================================================================================//
 	template <typename VariableType>
-	void DampingPairwiseComplex<VariableType>::
-		interaction(size_t index_i, Real dt)
+	void DampingPairwiseComplex<VariableType>::interaction(size_t index_i, Real dt)
 	{
 		DampingPairwiseInner<VariableType>::interaction(index_i, dt);
 
@@ -281,6 +282,7 @@ namespace SPH
 		/** Contact interaction. */
 		for (size_t k = 0; k < this->contact_configuration_.size(); ++k)
 		{
+			StdLargeVec<Real> &Vol_k = *(this->contact_Vol_[k]);
 			StdLargeVec<Real> &mass_k = *(this->contact_mass_[k]);
 			StdLargeVec<VariableType> &variable_k = *(this->contact_variable_[k]);
 			Neighborhood &contact_neighborhood = (*this->contact_configuration_[k])[index_i];
@@ -350,6 +352,7 @@ namespace SPH
 		/** Contact interaction. */
 		for (size_t k = 0; k < this->contact_configuration_.size(); ++k)
 		{
+			StdLargeVec<Real> &Vol_k = *(this->wall_Vol_[k]);
 			StdLargeVec<VariableType> &variable_k = *(this->wall_variable_[k]);
 			Neighborhood &contact_neighborhood = (*DissipationDataWithWall::contact_configuration_[k])[index_i];
 			// forward sweep
@@ -376,7 +379,7 @@ namespace SPH
 	template <typename VariableType>
 	DampingPairwiseFromWall<VariableType>::
 		DampingPairwiseFromWall(BaseContactRelation &contact_relation, const std::string &variable_name, Real eta)
-		: LocalDynamics(contact_relation.getSPHBody()),
+		: LocalDynamics(contact_relation.sph_body_),
 		  DataDelegateContact<BaseParticles, SolidParticles>(contact_relation),
 		  eta_(eta), Vol_(particles_->Vol_), mass_(particles_->mass_),
 		  variable_(*particles_->getVariableByName<VariableType>(variable_name))
@@ -389,8 +392,7 @@ namespace SPH
 	}
 	//=================================================================================================//
 	template <typename VariableType>
-	void DampingPairwiseFromWall<VariableType>::
-		interaction(size_t index_i, Real dt)
+	void DampingPairwiseFromWall<VariableType>::interaction(size_t index_i, Real dt)
 	{
 		Real Vol_i = Vol_[index_i];
 		Real mass_i = mass_[index_i];
@@ -401,6 +403,7 @@ namespace SPH
 		/** Contact interaction. */
 		for (size_t k = 0; k < contact_configuration_.size(); ++k)
 		{
+			StdLargeVec<Real> &Vol_k = *(wall_Vol_[k]);
 			StdLargeVec<VariableType> &variable_k = *(wall_variable_[k]);
 			Neighborhood &contact_neighborhood = (*contact_configuration_[k])[index_i];
 			// forward sweep
@@ -428,7 +431,7 @@ namespace SPH
 	template <typename... ConstructorArgs>
 	DampingWithRandomChoice<DampingAlgorithmType>::
 		DampingWithRandomChoice(Real random_ratio, ConstructorArgs &&...args)
-		: DampingAlgorithmType(std::forward<ConstructorArgs>(args)...), random_ratio_(random_ratio)
+		: DampingAlgorithmType(std::forward<ConstructorArgs>(args)...), random_ratio_(random_ratio) 
 	{
 		this->eta_ /= random_ratio;
 	}
@@ -444,6 +447,13 @@ namespace SPH
 	{
 		if (RandomChoice())
 			DampingAlgorithmType::exec(dt);
+	}
+	//=================================================================================================//
+	template <class DampingAlgorithmType>
+	void DampingWithRandomChoice<DampingAlgorithmType>::parallel_exec(Real dt)
+	{
+		if (RandomChoice())
+			DampingAlgorithmType::parallel_exec(dt);
 	}
 	//=================================================================================================//
 }

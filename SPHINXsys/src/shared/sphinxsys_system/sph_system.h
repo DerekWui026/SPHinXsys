@@ -89,7 +89,7 @@ namespace SPH
 		void initializeSystemConfigurations();
 		/** get the min time step from all bodies. */
 		Real getSmallestTimeStepAmongSolidBodies(Real CFL = 0.6);
-		/** Command line handle for Ctest. */
+		/** Command line handle for ctest. */
 #ifdef BOOST_AVAILABLE
 		void handleCommandlineOptions(int ac, char *av[]);
 #endif

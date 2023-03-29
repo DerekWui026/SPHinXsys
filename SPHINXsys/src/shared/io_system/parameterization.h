@@ -54,7 +54,7 @@ namespace SPH
 	};
 	/**
 	 * @class  BaseParameterization
-	 * @brief Derived class for parameterization. 
+	 * @brief Drived class for parameterization. 
 	 */
 	template<class BaseClassType>
 	class BaseParameterization : public BaseClassType

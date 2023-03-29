@@ -98,12 +98,12 @@ namespace SPH {
         }
     }
     //=============================================================================================//
-    StdVec<std::string> StateEngine::getStateVariableNames()
+    Array<std::string> StateEngine::getStateVariableNames()
     {
         std::map<std::string, StateVariableInfo>::const_iterator it;
         it = namedstatevariableinfo_.begin();
 
-        StdVec<std::string> names;//("",(int)namedstatevariableinfo_.size());
+        Array<std::string> names;//("",(int)namedstatevariableinfo_.size());
 
         while (it != namedstatevariableinfo_.end())
         {
@@ -143,7 +143,7 @@ namespace SPH {
             statesassociatedsystem_.reset(&getMultibodySystem());
             allstatevariables_.clear();
             allstatevariables_.resize(nsv);
-            StdVec<std::string> names = getStateVariableNames();
+            Array<std::string> names = getStateVariableNames();
             for (int i = 0; i < nsv; ++i)
                 allstatevariables_[i].reset(traverseToStateVariable(names[i]));
         }

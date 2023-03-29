@@ -1,5 +1,7 @@
 #include "compressible_fluid.h"
 
+using namespace std;
+
 namespace SPH {
 	//=============================================================================================//
 	Real CompressibleFluid::getPressure(Real rho, Real rho_e)
@@ -9,7 +11,7 @@ namespace SPH {
 	//=============================================================================================//
 	Real CompressibleFluid::getSoundSpeed(Real p, Real rho)
 	{
-		return std::sqrt(gamma_ * p / rho);
+		return sqrt(gamma_ * p / rho);
 	}
 	//=============================================================================================//
 }

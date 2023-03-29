@@ -51,27 +51,37 @@ namespace SPH
 	 */
 	class BaseMaterial
 	{
-	public:
-		explicit BaseMaterial(Real rho0)
-			: material_type_name_("BaseMaterial"), rho0_(rho0){};
-		BaseMaterial() : BaseMaterial(1.0){};
-		virtual ~BaseMaterial(){};
-		std::string MaterialType() { return material_type_name_; }
-		Real ReferenceDensity() { return rho0_; };
-		/**interface called in base particles constructor */
-		virtual void registerReloadLocalParameters(BaseParticles *base_particles){};
-		/**
-		 * This will be called after particles generation
-		 * and is important because particles are not defined yet when material is constructed.
-		 * For a composite material, i.e. there is a material pointer with another material,
-		 * one need assign the base particle to that material too.
-		 */
-		virtual void initializeLocalParameters(BaseParticles *base_particles){};
-		virtual BaseMaterial *ThisObjectPtr() { return this; };
-
 	protected:
 		std::string material_type_name_;
+		std::string parameters_name_;
 		Real rho0_; /**< reference density. */
+		BaseParticles *base_particles_;
+		XmlEngine reload_material_xml_engine_;
+		ParticleVariableList reload_local_parameters_;
+
+	public:
+		explicit BaseMaterial(Real rho0): material_type_name_("BaseMaterial"),
+			  parameters_name_("LocalMaterialParameters"),
+			  rho0_(rho0), base_particles_(nullptr),
+			  reload_material_xml_engine_("xml_material", "local_material_parameters"){};
+		BaseMaterial() : BaseMaterial(1.0){};
+		virtual ~BaseMaterial(){};
+
+		/** 
+		 * This will be called in BaseParticle constructor
+		 * and is important because particles are not defined in SPHBody constructor.
+		 * For a composite material, i.e. there is a material pointer with another material,
+		 * one need assign the base particle to that material too. 
+		 */
+		virtual void assignBaseParticles(BaseParticles *base_particles);
+		std::string MaterialType() { return material_type_name_; }
+		std::string LocalParametersName() { return parameters_name_; }
+		Real ReferenceDensity() { return rho0_; };
+
+		virtual void writeToXmlForReloadLocalParameters(const std::string &filefullpath);
+		virtual void readFromXmlForLocalParameters(const std::string &filefullpath);
+
+		virtual BaseMaterial *ThisObjectPtr() { return this; };
 	};
 
 	/** @class  Fluid

@@ -22,7 +22,7 @@
  * ------------------------------------------------------------------------*/
 /**
  * @file 	adaptation.h
- * @brief 	Adaptation scheme for particle in multi-resolution scenario.
+ * @brief 	Adaptiation scheme for particle in multi-resolution scenario.
  * @author	Chi ZHang and Xiangyu Hu
  */
 

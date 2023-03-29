@@ -55,16 +55,17 @@ namespace SPH
 	//=================================================================================================//
 	void SelfSurfaceContactRelation::resetNeighborhoodCurrentSize()
 	{
-		particle_for(execution::ParallelPolicy(), body_part_particles_,
-					 [&](size_t index_i)
-					 {
-						 inner_configuration_[index_i].current_size_ = 0;
-					 });
+		particle_parallel_for(body_part_particles_,
+							  [&](size_t index_i)
+							  {
+								  inner_configuration_[index_i].current_size_ = 0;
+							  });
 	}
 	//=================================================================================================//
 	void SelfSurfaceContactRelation::updateConfiguration()
 	{
 		resetNeighborhoodCurrentSize();
+		size_t total_real_particles = body_part_particles_.size();
 		cell_linked_list_.searchNeighborsByParticles(
 			body_surface_layer_, inner_configuration_,
 			get_single_search_depth_, get_self_contact_neighbor_);

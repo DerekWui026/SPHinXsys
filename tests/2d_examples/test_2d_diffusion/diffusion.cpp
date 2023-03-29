@@ -19,6 +19,7 @@ Real diffusion_coff = 1.0e-4;
 Real bias_coff = 0.0;
 Real alpha = Pi / 6.0;
 Vec2d bias_direction(cos(alpha), sin(alpha));
+std::array<std::string, 1> species_name_list{"Phi"};
 //----------------------------------------------------------------------
 //	Geometric shapes used in the case.
 //----------------------------------------------------------------------
@@ -42,26 +43,25 @@ public:
 class DiffusionMaterial : public DiffusionReaction<Solid>
 {
 public:
-	DiffusionMaterial() : DiffusionReaction<Solid>({"Phi"}, SharedPtr<NoReaction>())
+	DiffusionMaterial() : DiffusionReaction<Solid>(species_name_list)
 	{
 		initializeAnDiffusion<DirectionalDiffusion>("Phi", "Phi", diffusion_coff, bias_coff, bias_direction);
 	};
 };
-using DiffusionParticles = DiffusionReactionParticles<SolidParticles, DiffusionMaterial>;
 //----------------------------------------------------------------------
 //	Application dependent initial condition.
 //----------------------------------------------------------------------
 class DiffusionInitialCondition
-	: public DiffusionReactionInitialCondition<DiffusionParticles>
+	: public DiffusionReactionInitialCondition<SolidParticles, Solid>
 {
 protected:
 	size_t phi_;
 
 public:
 	explicit DiffusionInitialCondition(SPHBody &sph_body)
-		: DiffusionReactionInitialCondition<DiffusionParticles>(sph_body)
+		: DiffusionReactionInitialCondition<SolidParticles, Solid>(sph_body)
 	{
-		phi_ = particles_->diffusion_reaction_material_.AllSpeciesIndexMap()["Phi"];
+		phi_ = particles_->diffusion_reaction_material_.SpeciesIndexMap()["Phi"];
 	};
 
 	void update(size_t index_i, Real dt)
@@ -69,11 +69,11 @@ public:
 
 		if (pos_[index_i][0] >= 0.45 && pos_[index_i][0] <= 0.55)
 		{
-			all_species_[phi_][index_i] = 1.0;
+			species_n_[phi_][index_i] = 1.0;
 		}
 		if (pos_[index_i][0] >= 1.0)
 		{
-			all_species_[phi_][index_i] = exp(-2500.0 * ((pos_[index_i][0] - 1.5) * (pos_[index_i][0] - 1.5)));
+			species_n_[phi_][index_i] = exp(-2500.0 * ((pos_[index_i][0] - 1.5) * (pos_[index_i][0] - 1.5)));
 		}
 	};
 };
@@ -82,11 +82,11 @@ public:
 //----------------------------------------------------------------------
 class DiffusionBodyRelaxation
 	: public RelaxationOfAllDiffusionSpeciesRK2<
-		  RelaxationOfAllDiffusionSpeciesInner<DiffusionParticles>>
+		  RelaxationOfAllDiffusionSpeciesInner<SolidParticles, Solid>>
 {
 public:
-	explicit DiffusionBodyRelaxation(InnerRelation &inner_relation)
-		: RelaxationOfAllDiffusionSpeciesRK2(inner_relation){};
+	explicit DiffusionBodyRelaxation(InnerRelation &body_inner_relation)
+		: RelaxationOfAllDiffusionSpeciesRK2(body_inner_relation){};
 	virtual ~DiffusionBodyRelaxation(){};
 };
 //----------------------------------------------------------------------
@@ -123,7 +123,7 @@ int main()
 	//	Creating body, materials and particles.
 	//----------------------------------------------------------------------
 	SolidBody diffusion_body(sph_system, makeShared<DiffusionBlock>("DiffusionBlock"));
-	diffusion_body.defineParticlesAndMaterial<DiffusionParticles, DiffusionMaterial>();
+	diffusion_body.defineParticlesAndMaterial<DiffusionReactionParticles<SolidParticles, Solid>, DiffusionMaterial>();
 	diffusion_body.generateParticles<ParticleGeneratorLattice>();
 	//----------------------------------------------------------------------
 	//	Particle and body creation of fluid observers.
@@ -144,7 +144,7 @@ int main()
 	DiffusionBodyRelaxation diffusion_relaxation(diffusion_body_inner_relation);
 	SimpleDynamics<DiffusionInitialCondition> setup_diffusion_initial_condition(diffusion_body);
 	InteractionDynamics<solid_dynamics::CorrectConfiguration> correct_configuration(diffusion_body_inner_relation);
-	GetDiffusionTimeStepSize<DiffusionParticles> get_time_step_size(diffusion_body);
+	GetDiffusionTimeStepSize<SolidParticles, Solid> get_time_step_size(diffusion_body);
 	PeriodicConditionUsingCellLinkedList periodic_condition_y(diffusion_body, diffusion_body.getBodyShapeBounds(), yAxis);
 	//----------------------------------------------------------------------
 	//	Define the methods for I/O operations and observations of the simulation.
@@ -157,9 +157,9 @@ int main()
 	//	and case specified initial condition if necessary.
 	//----------------------------------------------------------------------
 	sph_system.initializeSystemCellLinkedLists();
-	periodic_condition_y.update_cell_linked_list_.exec();
+	periodic_condition_y.update_cell_linked_list_.parallel_exec();
 	sph_system.initializeSystemConfigurations();
-	correct_configuration.exec();
+	correct_configuration.parallel_exec();
 	setup_diffusion_initial_condition.exec();
 	//----------------------------------------------------------------------
 	//	Setup for time-stepping control
@@ -173,8 +173,8 @@ int main()
 	//----------------------------------------------------------------------
 	//	Statistics for CPU time
 	//----------------------------------------------------------------------
-	TickCount t1 = TickCount::now();
-	TimeInterval interval;
+	tick_count t1 = tick_count::now();
+	tick_count::interval_t interval;
 	//----------------------------------------------------------------------
 	//	First output before the main loop.
 	//----------------------------------------------------------------------
@@ -198,25 +198,25 @@ int main()
 							  << dt << "\n";
 				}
 
-				diffusion_relaxation.exec(dt);
+				diffusion_relaxation.parallel_exec(dt);
 
 				ite++;
-				dt = get_time_step_size.exec();
+				dt = get_time_step_size.parallel_exec();
 				relaxation_time += dt;
 				integration_time += dt;
 				GlobalStaticVariables::physical_time_ += dt;
 			}
 		}
 
-		TickCount t2 = TickCount::now();
+		tick_count t2 = tick_count::now();
 		write_states.writeToFile();
 		write_solid_temperature.writeToFile(ite);
-		TickCount t3 = TickCount::now();
+		tick_count t3 = tick_count::now();
 		interval += t3 - t2;
 	}
-	TickCount t4 = TickCount::now();
+	tick_count t4 = tick_count::now();
 
-	TimeInterval tt;
+	tick_count::interval_t tt;
 	tt = t4 - t1 - interval;
 	std::cout << "Total wall time for computation: " << tt.seconds() << " seconds." << std::endl;
 

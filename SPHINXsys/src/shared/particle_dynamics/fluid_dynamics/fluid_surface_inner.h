@@ -48,9 +48,7 @@ namespace SPH
 		public:
 			explicit FreeSurfaceIndicationInner(BaseInnerRelation &inner_relation, Real threshold = 0.75);
 			virtual ~FreeSurfaceIndicationInner(){};
-			
-			inline void interaction(size_t index_i, Real dt = 0.0);
-			
+			void interaction(size_t index_i, Real dt = 0.0);
 			void update(size_t index_i, Real dt = 0.0);
 
 		protected:
@@ -71,9 +69,7 @@ namespace SPH
 			template <typename... ConstructorArgs>
 			explicit SpatialTemporalFreeSurfaceIdentification(ConstructorArgs &&...args);
 			virtual ~SpatialTemporalFreeSurfaceIdentification(){};
-			
-			inline void interaction(size_t index_i, Real dt = 0.0);
-			
+			void interaction(size_t index_i, Real dt = 0.0);
 			void update(size_t index_i, Real dt = 0.0);
 
 		protected:
@@ -129,7 +125,7 @@ namespace SPH
 		 * @class FreeSurfaceHeight
 		 * @brief Probe the free surface profile for a fluid body part by reduced operation.
 		 */
-		class FreeSurfaceHeight : public BaseLocalDynamicsReduce<Real, ReduceMax, BodyPartByCell>,
+		class FreeSurfaceHeight : public LocalDynamicsReduce<Real, ReduceMax>,
 								  public FluidDataSimple
 		{
 		protected:
@@ -137,7 +133,7 @@ namespace SPH
 
 		public:
 			FreeSurfaceHeight(BodyPartByCell &body_part)
-				: BaseLocalDynamicsReduce<Real, ReduceMax, BodyPartByCell>(body_part, Real(MinRealNumber)),
+				: LocalDynamicsReduce<Real, ReduceMax>(body_part.getSPHBody(), Real(MinRealNumber)),
 				  FluidDataSimple(sph_body_), pos_(particles_->pos_)
 			{
 				quantity_name_ = "FreeSurfaceHeight";
@@ -155,15 +151,14 @@ namespace SPH
 		public:
 			explicit ColorFunctionGradientInner(BaseInnerRelation &inner_relation);
 			virtual ~ColorFunctionGradientInner(){};
-			
-			inline void interaction(size_t index_i, Real dt = 0.0);
+			void interaction(size_t index_i, Real dt = 0.0);
 
 		protected:
-			StdLargeVec<int> &surface_indicator_;
-			StdLargeVec<Real> &pos_div_;
 			Real threshold_by_dimensions_;
+			StdLargeVec<int> &surface_indicator_;
 			StdLargeVec<Vecd> color_grad_;
 			StdLargeVec<Vecd> surface_norm_;
+			StdLargeVec<Real> &pos_div_;
 		};
 
 		/**
@@ -175,16 +170,15 @@ namespace SPH
 		public:
 			explicit ColorFunctionGradientInterpolationInner(BaseInnerRelation &inner_relation);
 			virtual ~ColorFunctionGradientInterpolationInner(){};
-			
-			inline void interaction(size_t index_i, Real dt = 0.0);
+			void interaction(size_t index_i, Real dt = 0.0);
 
 		protected:
+			Real threshold_by_dimensions_;
 			StdLargeVec<Real> &Vol_;
 			StdLargeVec<int> &surface_indicator_;
 			StdLargeVec<Vecd> &color_grad_;
 			StdLargeVec<Vecd> &surface_norm_;
 			StdLargeVec<Real> &pos_div_;
-			Real threshold_by_dimensions_;
 		};
 
 		/**
@@ -197,8 +191,7 @@ namespace SPH
 			SurfaceTensionAccelerationInner(BaseInnerRelation &inner_relation, Real gamma);
 			explicit SurfaceTensionAccelerationInner(BaseInnerRelation &inner_relation);
 			virtual ~SurfaceTensionAccelerationInner(){};
-			
-			inline void interaction(size_t index_i, Real dt = 0.0);
+			void interaction(size_t index_i, Real dt = 0.0);
 
 		protected:
 			Real gamma_;

@@ -32,7 +32,6 @@
 
 #include "fluid_dynamics_inner.h"
 
-#include "relax_dynamics.h"
 #include <mutex>
 
 namespace SPH
@@ -43,7 +42,7 @@ namespace SPH
          * @class BaseFlowBoundaryCondition
          * @brief Base class for all boundary conditions.
          */
-        class BaseFlowBoundaryCondition : public BaseLocalDynamics<BodyPartByCell>, public FluidDataSimple
+        class BaseFlowBoundaryCondition : public LocalDynamics, public FluidDataSimple
         {
         public:
             BaseFlowBoundaryCondition(BodyPartByCell &body_part);
@@ -58,7 +57,7 @@ namespace SPH
          * @class FlowVelocityBuffer
          * @brief Flow buffer in which the particle velocity relaxes to a given target profile.
          * This technique will be used for applying several boundary conditions,
-         * such as free stream, inflow, damping boundary conditions.
+         * such as freestream, inflow, damping boundary conditions.
          */
         class FlowVelocityBuffer : public BaseFlowBoundaryCondition
         {
@@ -178,7 +177,7 @@ namespace SPH
          * @brief Inflow boundary condition imposed on an emitter, in which pressure and density profile are imposed too.
          * The body part region is required to have parallel lower- and upper-bound surfaces.
          */
-        class EmitterInflowCondition : public BaseLocalDynamics<BodyPartByParticle>, public FluidDataSimple
+        class EmitterInflowCondition : public LocalDynamics, public FluidDataSimple
         {
         public:
             explicit EmitterInflowCondition(BodyAlignedBoxByParticle &aligned_box_part);
@@ -208,7 +207,7 @@ namespace SPH
          * Note that the axis is at the local coordinate and upper bound direction is
          * the local positive direction.
          */
-        class EmitterInflowInjection : public BaseLocalDynamics<BodyPartByParticle>, public FluidDataSimple
+        class EmitterInflowInjection : public LocalDynamics, public FluidDataSimple
         {
         public:
             EmitterInflowInjection(BodyAlignedBoxByParticle &aligned_box_part,
@@ -230,7 +229,7 @@ namespace SPH
          * @class DisposerOutflowDeletion
          * @brief Delete particles who ruing out the computational domain.
          */
-        class DisposerOutflowDeletion : public BaseLocalDynamics<BodyPartByCell>, public FluidDataSimple
+        class DisposerOutflowDeletion : public LocalDynamics, public FluidDataSimple
         {
         public:
             DisposerOutflowDeletion(BodyAlignedBoxByCell &aligned_box_part, int axis);
@@ -249,7 +248,7 @@ namespace SPH
          * @class StaticConfinementDensity
          * @brief static confinement condition for density summation
          */
-        class StaticConfinementDensity : public BaseLocalDynamics<BodyPartByCell>, public FluidDataSimple
+        class StaticConfinementDensity : public LocalDynamics, public FluidDataSimple
         {
         public:
             StaticConfinementDensity(NearShapeSurface &near_surface);
@@ -267,7 +266,7 @@ namespace SPH
          * @class StaticConfinementIntegration1stHalf
          * @brief static confinement condition for pressure relaxation
          */
-        class StaticConfinementIntegration1stHalf : public BaseLocalDynamics<BodyPartByCell>, public FluidDataSimple
+        class StaticConfinementIntegration1stHalf : public LocalDynamics, public FluidDataSimple
         {
         public:
             StaticConfinementIntegration1stHalf(NearShapeSurface &near_surface);
@@ -286,7 +285,7 @@ namespace SPH
          * @class StaticConfinementIntegration2ndHalf
          * @brief static confinement condition for density relaxation
          */
-        class StaticConfinementIntegration2ndHalf : public BaseLocalDynamics<BodyPartByCell>, public FluidDataSimple
+        class StaticConfinementIntegration2ndHalf : public LocalDynamics, public FluidDataSimple
         {
         public:
             StaticConfinementIntegration2ndHalf(NearShapeSurface &near_surface);
@@ -308,10 +307,9 @@ namespace SPH
         class StaticConfinement
         {
         public:
-            SimpleDynamics<StaticConfinementDensity> density_summation_;
-            SimpleDynamics<StaticConfinementIntegration1stHalf> pressure_relaxation_;
-            SimpleDynamics<StaticConfinementIntegration2ndHalf> density_relaxation_;
-           SimpleDynamics<relax_dynamics::ShapeSurfaceBounding> surface_bounding_;
+            SimpleDynamics<StaticConfinementDensity, NearShapeSurface> density_summation_;
+            SimpleDynamics<StaticConfinementIntegration1stHalf, NearShapeSurface> pressure_relaxation_;
+            SimpleDynamics<StaticConfinementIntegration2ndHalf, NearShapeSurface> density_relaxation_;
 
             StaticConfinement(NearShapeSurface &near_surface);
             virtual ~StaticConfinement(){};

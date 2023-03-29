@@ -126,20 +126,21 @@ int main(int ac, char *av[])
 	//	and case specified initial condition if necessary.
 	//----------------------------------------------------------------------
 	sph_system.initializeSystemCellLinkedLists();
-	periodic_condition_x.update_cell_linked_list_.exec();
-	periodic_condition_y.update_cell_linked_list_.exec();
+	periodic_condition_x.update_cell_linked_list_.parallel_exec();
+	periodic_condition_y.update_cell_linked_list_.parallel_exec();
 	sph_system.initializeSystemConfigurations();
-	initial_condition.exec();
+	initial_condition.parallel_exec();
 	//----------------------------------------------------------------------
 	//	Setup for time-stepping control
 	//----------------------------------------------------------------------
 	size_t number_of_iterations = 0;
 	int screen_output_interval = 100;
+	int restart_output_interval = screen_output_interval * 10;
 	Real end_time = 5.0;
 	Real output_interval = 0.1; /**< Time stamps for output of body states. */
 	/** statistics for computing CPU time. */
-	TickCount t1 = TickCount::now();
-	TimeInterval interval;
+	tick_count t1 = tick_count::now();
+	tick_count::interval_t interval;
 	//----------------------------------------------------------------------
 	//	First output before the main loop.
 	//----------------------------------------------------------------------
@@ -157,13 +158,13 @@ int main(int ac, char *av[])
 		while (integration_time < output_interval)
 		{
 			/** Acceleration due to viscous force. */
-			time_step_initialization.exec();
-			Real dt = get_fluid_time_step_size.exec();
-			viscous_acceleration.exec();
+			time_step_initialization.parallel_exec();
+			Real dt = get_fluid_time_step_size.parallel_exec();
+			viscous_acceleration.parallel_exec();
 			/** Dynamics including pressure relaxation. */
 			integration_time += dt;
-			pressure_relaxation.exec(dt);
-			density_and_energy_relaxation.exec(dt);
+			pressure_relaxation.parallel_exec(dt);
+			density_and_energy_relaxation.parallel_exec(dt);
 			GlobalStaticVariables::physical_time_ += dt;
 
 			if (number_of_iterations % screen_output_interval == 0)
@@ -175,19 +176,19 @@ int main(int ac, char *av[])
 			number_of_iterations++;
 		}
 
-		TickCount t2 = TickCount::now();
+		tick_count t2 = tick_count::now();
 		write_total_mechanical_energy.writeToFile(number_of_iterations);
 		write_maximum_speed.writeToFile(number_of_iterations);
 		body_states_recording.writeToFile();
-		TickCount t3 = TickCount::now();
+		tick_count t3 = tick_count::now();
 		interval += t3 - t2;
 	}
-	TickCount t4 = TickCount::now();
+	tick_count t4 = tick_count::now();
 
-	TimeInterval tt;
+	tick_count::interval_t tt;
 	tt = t4 - t1 - interval;
-	std::cout << "Total wall time for computation: " << tt.seconds()
-		 << " seconds." << std::endl;
+	cout << "Total wall time for computation: " << tt.seconds()
+		 << " seconds." << endl;
 
 	write_total_mechanical_energy.newResultTest();
 	write_maximum_speed.newResultTest();

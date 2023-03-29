@@ -88,14 +88,13 @@ public:
 //----------------------------------------------------------------------
 //	Main program starts here.
 //----------------------------------------------------------------------
-int main(int ac, char *av[])
+int main()
 {
 	//----------------------------------------------------------------------
 	//	Build up an SPHSystem.
 	//----------------------------------------------------------------------
 	BoundingBox system_domain_bounds(Vec2d(-BW, -BW), Vec2d(DL + BW, DH + BW));
 	SPHSystem sph_system(system_domain_bounds, resolution_ref);
-	sph_system.handleCommandlineOptions(ac, av);
 	IOEnvironment io_environment(sph_system);
 	//----------------------------------------------------------------------
 	//	Creating bodies with corresponding materials and particles.
@@ -136,7 +135,6 @@ int main(int ac, char *av[])
 	update_density_by_summation.post_processes_.push_back(&confinement_condition.density_summation_);
 	pressure_relaxation.post_processes_.push_back(&confinement_condition.pressure_relaxation_);
 	density_relaxation.post_processes_.push_back(&confinement_condition.density_relaxation_);
-	density_relaxation.post_processes_.push_back(&confinement_condition.surface_bounding_);
 	//----------------------------------------------------------------------
 	//	Define the methods for I/O operations, observations
 	//	and regression tests of the simulation.
@@ -158,16 +156,17 @@ int main(int ac, char *av[])
 	size_t number_of_iterations = 0;
 	int screen_output_interval = 100;
 	int observation_sample_interval = screen_output_interval * 2;
+	int restart_output_interval = screen_output_interval * 10;
 	Real end_time = 20.0;		/**< End time. */
 	Real output_interval = 0.1; /**< Time stamps for output of body states. */
 	Real dt = 0.0;				/**< Default acoustic time step sizes. */
 	/** statistics for computing CPU time. */
-	TickCount t1 = TickCount::now();
-	TimeInterval interval;
-	TimeInterval interval_computing_time_step;
-	TimeInterval interval_computing_pressure_relaxation;
-	TimeInterval interval_updating_configuration;
-	TickCount time_instance;
+	tick_count t1 = tick_count::now();
+	tick_count::interval_t interval;
+	tick_count::interval_t interval_computing_time_step;
+	tick_count::interval_t interval_computing_pressure_relaxation;
+	tick_count::interval_t interval_updating_configuration;
+	tick_count time_instance;
 	//----------------------------------------------------------------------
 	//	First output before the main loop.
 	//----------------------------------------------------------------------
@@ -184,25 +183,25 @@ int main(int ac, char *av[])
 		while (integration_time < output_interval)
 		{
 			/** Acceleration due to viscous force and gravity. */
-			time_instance = TickCount::now();
-			initialize_a_fluid_step.exec();
-			Real Dt = get_fluid_advection_time_step_size.exec();
-			update_density_by_summation.exec();
-			interval_computing_time_step += TickCount::now() - time_instance;
+			time_instance = tick_count::now();
+			initialize_a_fluid_step.parallel_exec();
+			Real Dt = get_fluid_advection_time_step_size.parallel_exec();
+			update_density_by_summation.parallel_exec();
+			interval_computing_time_step += tick_count::now() - time_instance;
 
 			/** Dynamics including pressure relaxation. */
-			time_instance = TickCount::now();
+			time_instance = tick_count::now();
 			Real relaxation_time = 0.0;
 			while (relaxation_time < Dt)
 			{
-				pressure_relaxation.exec(dt);
-				density_relaxation.exec(dt);
-				dt = get_fluid_time_step_size.exec();
+				pressure_relaxation.parallel_exec(dt);
+				density_relaxation.parallel_exec(dt);
+				dt = get_fluid_time_step_size.parallel_exec();
 				relaxation_time += dt;
 				integration_time += dt;
 				GlobalStaticVariables::physical_time_ += dt;
 			}
-			interval_computing_pressure_relaxation += TickCount::now() - time_instance;
+			interval_computing_pressure_relaxation += tick_count::now() - time_instance;
 
 			if (number_of_iterations % screen_output_interval == 0)
 			{
@@ -219,21 +218,21 @@ int main(int ac, char *av[])
 			number_of_iterations++;
 
 			/** Update cell linked list and configuration. */
-			time_instance = TickCount::now();
+			time_instance = tick_count::now();
 			water_block.updateCellLinkedListWithParticleSort(100);
 			water_block_inner.updateConfiguration();
 			fluid_observer_contact.updateConfiguration();
-			interval_updating_configuration += TickCount::now() - time_instance;
+			interval_updating_configuration += tick_count::now() - time_instance;
 		}
 
-		TickCount t2 = TickCount::now();
+		tick_count t2 = tick_count::now();
 		body_states_recording.writeToFile();
-		TickCount t3 = TickCount::now();
+		tick_count t3 = tick_count::now();
 		interval += t3 - t2;
 	}
-	TickCount t4 = TickCount::now();
+	tick_count t4 = tick_count::now();
 
-	TimeInterval tt;
+	tick_count::interval_t tt;
 	tt = t4 - t1 - interval;
 	std::cout << "Total wall time for computation: " << tt.seconds()
 			  << " seconds." << std::endl;
@@ -244,16 +243,8 @@ int main(int ac, char *av[])
 	std::cout << std::fixed << std::setprecision(9) << "interval_updating_configuration = "
 			  << interval_updating_configuration.seconds() << "\n";
 
-	if (sph_system.generate_regression_data_)
-	{
-		write_water_mechanical_energy.generateDataBase(1.0e-3);
-		write_recorded_water_pressure.generateDataBase(1.0e-3);
-	}
-	else if (sph_system.RestartStep() == 0)
-	{
-		write_water_mechanical_energy.newResultTest();
-		write_recorded_water_pressure.newResultTest();
-	}
+	write_water_mechanical_energy.newResultTest();
+	write_recorded_water_pressure.newResultTest();
 
 	return 0;
 }

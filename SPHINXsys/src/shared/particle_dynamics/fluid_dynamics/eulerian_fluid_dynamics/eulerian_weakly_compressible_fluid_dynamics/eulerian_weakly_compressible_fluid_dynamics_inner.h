@@ -87,14 +87,13 @@ namespace SPH
 		public:
 			explicit ViscousAccelerationInner(BaseInnerRelation &inner_relation);
 			virtual ~ViscousAccelerationInner(){};
-			
-			inline void interaction(size_t index_i, Real dt = 0.0);
+			void interaction(size_t index_i, Real dt = 0.0);
 
 		protected:
-			StdLargeVec<Real> &Vol_, &rho_, &p_;
-			StdLargeVec<Vecd> &vel_, &dmom_dt_prior_;
 			Real mu_;
 			Real smoothing_length_;
+			StdLargeVec<Real> &Vol_, &rho_, &p_;
+			StdLargeVec<Vecd> &vel_, &dmom_dt_prior_;
 		};
 
 		/**
@@ -147,9 +146,7 @@ namespace SPH
 			virtual ~BaseIntegration1stHalf(){};
 			RiemannSolverType riemann_solver_;
 			void initialization(size_t index_i, Real dt = 0.0);
-			
-			inline void interaction(size_t index_i, Real dt = 0.0);
-			
+			void interaction(size_t index_i, Real dt = 0.0);
 			void update(size_t index_i, Real dt = 0.0);
 		};
 		using Integration1stHalf = BaseIntegration1stHalf<NoRiemannSolver>;
@@ -171,9 +168,7 @@ namespace SPH
 			explicit BaseIntegration2ndHalf(BaseInnerRelation &inner_relation);
 			virtual ~BaseIntegration2ndHalf(){};
 			RiemannSolverType riemann_solver_;
-			
-			inline void interaction(size_t index_i, Real dt = 0.0);
-			
+			void interaction(size_t index_i, Real dt = 0.0);
 			void update(size_t index_i, Real dt = 0.0);
 		};
 		using Integration2ndHalfHLLCWithLimiterRiemann = BaseIntegration2ndHalf<HLLCRiemannSolverWithLimiterInWeaklyCompressibleFluid>;
@@ -187,16 +182,15 @@ namespace SPH
 		{
 		public:
 			NonReflectiveBoundaryVariableCorrection(BaseInnerRelation &inner_relation)
-				: LocalDynamics(inner_relation.getSPHBody()), EulerianWeaklyCompressibleFluidDataInner(inner_relation),
-				  rho_(particles_->rho_), p_(particles_->p_), mass_(particles_->mass_), Vol_(particles_->Vol_),
-				  vel_(particles_->vel_), mom_(particles_->mom_), pos_(particles_->pos_),
+				: LocalDynamics(inner_relation.sph_body_), EulerianWeaklyCompressibleFluidDataInner(inner_relation),
+				  rho_(particles_->rho_), p_(particles_->p_), vel_(particles_->vel_),
+				  mom_(particles_->mom_), pos_(particles_->pos_), mass_(particles_->mass_), Vol_(particles_->Vol_),
 				  surface_indicator_(particles_->surface_indicator_)
 			{
 				particles_->registerVariable(n_, "NormalDirection");
 			};
 			virtual ~NonReflectiveBoundaryVariableCorrection(){};
-			
-			inline void interaction(size_t index_i, Real dt = 0.0);
+			void interaction(size_t index_i, Real dt = 0.0);
 
 		protected:
 			Real p_farfield_, rho_farfield_, gamma_, sound_speed_;

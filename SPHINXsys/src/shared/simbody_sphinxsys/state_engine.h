@@ -39,6 +39,7 @@
 #define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
 
 #include "base_data_package.h"
+#include "array.h"
 #include "exception.h"
 #include "all_simbody.h"
 
@@ -305,7 +306,7 @@ namespace SPH {
         /**
          * Get the names of "continuous" state variables maintained by the Engine
          */
-        StdVec<std::string> getStateVariableNames();
+        Array<std::string> getStateVariableNames();
         /**
         * Get all values of the state variables allocated by this StateEngine.
         *

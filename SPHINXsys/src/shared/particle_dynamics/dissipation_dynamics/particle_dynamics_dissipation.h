@@ -35,8 +35,6 @@
 
 namespace SPH
 {
-	class SolidParticles;
-	
 	typedef DataDelegateInner<BaseParticles> DissipationDataInner;
 	typedef DataDelegateContact<BaseParticles, BaseParticles, DataDelegateEmptyBase>
 		DissipationDataContact;
@@ -66,8 +64,7 @@ namespace SPH
 	public:
 		DampingBySplittingInner(BaseInnerRelation &inner_relation, const std::string &variable_name, Real eta);
 		virtual ~DampingBySplittingInner(){};
-
-		inline void interaction(size_t index_i, Real dt = 0.0);
+		void interaction(size_t index_i, Real dt = 0.0);
 
 	protected:
 		Real eta_; /**< damping coefficient */
@@ -125,8 +122,7 @@ namespace SPH
 	public:
 		DampingPairwiseInner(BaseInnerRelation &inner_relation, const std::string &variable_name, Real eta);
 		virtual ~DampingPairwiseInner(){};
-		
-		inline void interaction(size_t index_i, Real dt = 0.0);
+		void interaction(size_t index_i, Real dt = 0.0);
 
 	protected:
 		StdLargeVec<Real> &Vol_, &mass_;
@@ -142,8 +138,7 @@ namespace SPH
 							   BaseContactRelation &contact_relation, const std::string &variable_name, Real eta);
 		DampingPairwiseComplex(ComplexRelation &complex_relation, const std::string &variable_name, Real eta);
 		virtual ~DampingPairwiseComplex(){};
-		
-		inline void interaction(size_t index_i, Real dt = 0.0);
+		void interaction(size_t index_i, Real dt = 0.0);
 
 	private:
 		StdVec<StdLargeVec<Real> *> contact_Vol_, contact_mass_;
@@ -165,8 +160,7 @@ namespace SPH
 								BaseContactRelation &contact_relation, const std::string &variable_name, Real eta);
 		DampingPairwiseWithWall(ComplexRelation &complex_wall_relation, const std::string &variable_name, Real eta);
 		virtual ~DampingPairwiseWithWall(){};
-		
-		inline void interaction(size_t index_i, Real dt = 0.0);
+		void interaction(size_t index_i, Real dt = 0.0);
 
 	private:
 		StdVec<StdLargeVec<Real> *> wall_Vol_;
@@ -185,8 +179,7 @@ namespace SPH
 	public:
 		DampingPairwiseFromWall(BaseContactRelation &contact_relation, const std::string &variable_name, Real eta);
 		virtual ~DampingPairwiseFromWall(){};
-		
-		inline void interaction(size_t index_i, Real dt = 0.0);
+		void interaction(size_t index_i, Real dt = 0.0);
 
 	private:
 		Real eta_; /**< damping coefficient */
@@ -216,6 +209,7 @@ namespace SPH
 		virtual ~DampingWithRandomChoice(){};
 
 		virtual void exec(Real dt = 0.0) override;
+		virtual void parallel_exec(Real dt = 0.0) override;
 	};
 }
 #endif // PARTICLE_DYNAMICS_DISSIPATION_H

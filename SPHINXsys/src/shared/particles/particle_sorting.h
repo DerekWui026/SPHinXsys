@@ -162,7 +162,7 @@ namespace tbb
 		}
 
 		/*
-		Description : InsertionSort in Iterator format
+		Description : Insertsort in Iterator format
 		Link        : http://www.codecodex.com/wiki/Insertion_sort
 		*/
 
